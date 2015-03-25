@@ -4,48 +4,119 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/css/reset.css">
     <link rel="stylesheet" type="text/css" href="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.css">
     <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
+    <style>
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+
+        h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .inline_chart_wrapper {
+            float: left;
+            margin-right: 20px;
+        }
+        .chart {
+            width: 450px;
+        }
+        .clear {
+            clear: both;
+        }
+    </style>
   </head>
   <body class="mixpanel-platform-body">
+    <h1>KPI Dashboard</h1>
     <div class="mixpanel-platform-section">
-      <div id="eventSelect" style="float: left;"></div>
-      <div id="by" class="mixpanel-platform-label" style="margin-left: 10px; display: none;">by</div>
-      <div id="propSelect" style="float: left;"></div>
-      <div id="dateSelect" style="float: right;"></div>
-      <div style="clear: both;"></div>
-      <div id="graph"></div>
+        <h2>Active users</h2>
+        <div class="inline_chart_wrapper">
+            <h3>DAU over the last 7 days</h3>
+            <div id="DAU_graph" class="chart"></div>
+        </div>
+        <div class="inline_chart_wrapper">
+            <h3>MAU over the last 3 months</h3>
+            <div id="MAU_graph" class="chart"></div>
+        </div>
+        <div class="clear"></div>
     </div>
-    <div id="table"></div>
+    <div class="mixpanel-platform-section">
+        <h2>Retained users</h2>
+    </div>
+    <div class="mixpanel-platform-section">
+        <h2>User details</h2>
+        <div class="inline_chart_wrapper">
+            <h3>Top countries today</h3>
+            <div id="user_countries" class="chart"></div>
+        </div>
+        <div class="inline_chart_wrapper">
+            <h3>Top languages today</h3>
+            <div id="user_languages" class="chart"></div>
+        </div>
+        <div class="clear"></div>
+    </div>
+
     <script>
-      MP.api.ready(function() {
-        var eventSelect = $('#eventSelect').MPEventSelect();
-        var propSelect  = $('#propSelect').MPPropertySelect();
-        var dateSelect  = $('#dateSelect').MPDatepicker();
-        var eventGraph  = $('#graph').MPChart({chartType: 'line'});
-        var eventTable  = $('#table').MPTable({
-          showPercentages: true,
-          firstColHeader: 'Event'
-        });
-
-        var runQuery = function() {
-          var eventName = eventSelect.MPEventSelect('value'),
-              propName  = propSelect.MPPropertySelect('value'),
-              dateRange = dateSelect.MPDatepicker('value');
-
-          if (eventName) {
-            MP.api.segment(eventName, propName, dateRange).done(function(results) {
-              eventGraph.MPChart('setData', results);
-              eventTable.MPTable('setData', results);
+        MP.api.ready(function() {
+            // DAU
+            MP.api.segment('session_start', null, {
+                from: moment().subtract(7, 'days'),
+                to: moment(),
+                type: 'unique',
+                unit: 'day'
+            }).done(function(response) {
+                $("#DAU_graph").MPChart({
+                    data: response,
+                    chartType: 'line'
+                });
             });
-          }
-        };
-        eventSelect.on('change', function(e, eventName) {
-          propSelect.MPPropertySelect('setEvent', eventName);
-          $("#by").show();
-          runQuery();
+
+            // MAU
+            MP.api.segment('session_start', null, {
+                from: moment().subtract(3, 'months'),
+                to: moment(),
+                type: 'unique',
+                unit: 'month'
+            }).done(function(response) {
+                $("#MAU_graph").MPChart({
+                    data: response,
+                    chartType: 'line'
+                });
+            });
+
+            // Top countries
+            MP.api.segment('session_start', 'mp_country_code', {
+                from: moment(),
+                to: moment(),
+                type: 'general',
+                unit: 'day',
+                limit: 12
+            }).done(function(response) {
+                $("#user_countries").MPChart({
+                    data: response,
+                    chartType: 'pie'
+                });
+            });
+
+            // Top languages
+            MP.api.segment('session_start', 'learning_language', {
+                from: moment(),
+                to: moment(),
+                type: 'general',
+                unit: 'day'
+            }).done(function(response) {
+                $("#user_languages").MPChart({
+                    data: response,
+                    chartType: 'pie'
+                });
+            });
         });
-        propSelect.on('change', runQuery);
-        dateSelect.on('change', runQuery);
-      });
     </script>
   </body>
 </html>
